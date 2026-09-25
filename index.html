@@ -1,89 +1,72 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-
 <meta charset="UTF-8">
-
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
 <title>ESP32 Python Studio</title>
 
-<!-- Python running inside the browser -->
-<script src="https://cdn.jsdelivr.net/pyodide/v0.29.3/full/pyodide.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.20/codemirror.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.20/theme/material-darker.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/xterm/6.0.0/xterm.css">
 
-<!-- Terminal emulator -->
-<link
-    rel="stylesheet"
-    href="https://cdnjs.cloudflare.com/ajax/libs/xterm/6.0.0/xterm.css"
->
-
-<script
-    src="https://cdnjs.cloudflare.com/ajax/libs/xterm/6.0.0/xterm.js">
-</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.20/codemirror.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.20/mode/python/python.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.20/addon/edit/closebrackets.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.20/addon/edit/matchbrackets.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.20/addon/selection/active-line.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xterm/6.0.0/xterm.js"></script>
 
 <style>
-
 * {
     box-sizing: border-box;
 }
 
+html,
 body {
     margin: 0;
-    height: 100vh;
+    width: 100%;
+    height: 100%;
     overflow: hidden;
+}
 
+body {
     background: #0f1117;
-    color: white;
-
+    color: #fff;
     font-family: Arial, sans-serif;
 }
 
-
-/* ================================
-   TOP BAR
-================================ */
-
 header {
     height: 64px;
-
     display: flex;
     align-items: center;
-
     gap: 8px;
-
     padding: 0 15px;
-
     background: #181b23;
-
     border-bottom: 1px solid #303541;
 }
 
 h1 {
-    margin: 0;
-    margin-right: auto;
-
+    margin: 0 auto 0 0;
     font-size: 19px;
 }
 
 button {
     border: 1px solid #414756;
-
     background: #292e39;
-
     color: white;
-
     padding: 9px 14px;
-
     border-radius: 6px;
-
     cursor: pointer;
-
     font-size: 14px;
 }
 
 button:hover {
     background: #383e4b;
+}
+
+button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
 }
 
 #connectButton {
@@ -104,134 +87,76 @@ button:hover {
 #stopButton {
     background: #991b1b;
     border-color: #ef4444;
-
     display: none;
 }
 
-
-/* ================================
-   MAIN
-================================ */
-
 .main {
     height: calc(100vh - 99px);
-
     display: flex;
-
     flex-direction: column;
-
     min-height: 0;
 }
-
-
-/* ================================
-   EDITOR
-================================ */
 
 .editor-area {
     flex: 1;
-
     min-height: 0;
-
     display: flex;
-}
-
-#lineNumbers {
-    width: 55px;
-
-    padding-top: 15px;
-    padding-right: 10px;
-
-    background: #151820;
-
-    color: #666d7b;
-
-    text-align: right;
-
-    font-family: Consolas, monospace;
-
-    font-size: 15px;
-
-    line-height: 1.5;
-
-    overflow: hidden;
-
-    user-select: none;
 }
 
 #editor {
     flex: 1;
-
-    resize: none;
-
-    border: none;
-
-    outline: none;
-
-    padding: 15px;
-
-    background: #0f1117;
-
-    color: #e6edf3;
-
-    font-family:
-        Consolas,
-        "Courier New",
-        monospace;
-
+    min-width: 0;
+    height: 100%;
     font-size: 15px;
-
     line-height: 1.5;
-
-    tab-size: 4;
-
-    white-space: pre;
-
-    overflow: auto;
 }
 
+.CodeMirror {
+    height: 100%;
+    font-family: Consolas, "Courier New", monospace;
+    font-size: 15px;
+    line-height: 1.5;
+    background: #0f1117;
+}
 
-/* ================================
-   OUTPUT TERMINAL
-================================ */
+.CodeMirror-gutters {
+    background: #151820;
+    border-right: 1px solid #303541;
+}
+
+.CodeMirror-linenumber {
+    color: #666d7b;
+}
+
+.CodeMirror-activeline-background {
+    background: rgba(255, 255, 255, 0.045);
+}
 
 .output-container {
-    height: 220px;
-
+    height: 260px;
     background: #090b0f;
-
     border-top: 1px solid #303541;
-
     display: flex;
-
     flex-direction: column;
+    min-height: 120px;
 }
 
 .output-title {
     height: 35px;
-
+    flex: 0 0 35px;
     display: flex;
-
     align-items: center;
-
     padding: 0 15px;
-
     background: #181b23;
-
     color: #cbd5e1;
-
     font-size: 13px;
-
     border-bottom: 1px solid #303541;
 }
 
 #terminal {
     flex: 1;
-
     min-height: 0;
-
     padding: 8px 10px;
-
     overflow: hidden;
 }
 
@@ -239,393 +164,322 @@ button:hover {
     height: 100%;
 }
 
-#terminal .xterm-viewport {
-    overflow-y: auto !important;
-}
-
-
-/* ================================
-   STATUS
-================================ */
-
 .status-bar {
     height: 35px;
-
     display: flex;
-
     align-items: center;
-
-    padding: 0 15px;
-
+    padding: 0 12px;
     background: #181b23;
-
     border-top: 1px solid #303541;
-
-    font-size: 13px;
+    color: #9ca3af;
+    font-size: 12px;
 }
 
-.connected {
+#status.connected {
     color: #4ade80;
 }
 
-.error {
+#status.error {
     color: #f87171;
 }
 
-.normal {
-    color: #9ca3af;
+@media (max-width: 800px) {
+    header {
+        gap: 5px;
+        padding: 0 8px;
+    }
+
+    h1 {
+        font-size: 15px;
+    }
+
+    button {
+        padding: 8px 9px;
+        font-size: 12px;
+    }
+
+    .output-container {
+        height: 230px;
+    }
 }
-
 </style>
-
 </head>
-
 
 <body>
 
-
-<!-- ================================
-     HEADER
-================================ -->
-
 <header>
+    <h1>ESP32 Python Studio</h1>
 
-<h1>
-🐍 ESP32 Python Studio
-</h1>
-
-
-<button id="connectButton">
-Connect ESP32
-</button>
-
-
-<button id="loadButton">
-Load
-</button>
-
-
-<button id="saveButton">
-Save
-</button>
-
-
-<button id="runButton">
-▶ Run
-</button>
-
-
-<button id="stopButton">
-■ Stop
-</button>
-
-
-<button id="downloadButton">
-Download
-</button>
-
-
-<button id="clearButton">
-Clear
-</button>
-
+    <button id="connectButton">Connect ESP32</button>
+    <button id="loadButton">Load</button>
+    <button id="saveButton">Save</button>
+    <button id="runButton">Run</button>
+    <button id="stopButton">Stop</button>
+    <button id="downloadButton">Download</button>
+    <button id="clearButton">Clear</button>
 </header>
-
-
-<!-- ================================
-     MAIN
-================================ -->
 
 <div class="main">
 
+    <div class="editor-area">
+        <textarea id="editor"></textarea>
+    </div>
 
-<div class="editor-area">
+    <div class="output-container">
 
+        <div class="output-title">
+            Terminal
+        </div>
 
-<div id="lineNumbers">
-1
-</div>
+        <div id="terminal"></div>
 
-
-<textarea
-id="editor"
-spellcheck="false"
-placeholder="Write Python here..."
-></textarea>
-
+    </div>
 
 </div>
-
-
-<div class="output-container">
-
-
-<div class="output-title">
-OUTPUT
-</div>
-
-
-<div
-    id="terminal"
-    aria-label="Python terminal">
-</div>
-
-
-</div>
-
-
-</div>
-
-
-<!-- ================================
-     STATUS BAR
-================================ -->
 
 <div class="status-bar">
-
-<span
-id="status"
-class="normal">
-Not connected
-</span>
-
+    <span id="status">Ready</span>
 </div>
 
 
 <script>
+/* ======================================================
+   CONFIGURATION
+====================================================== */
+
+/*
+   Leave blank because the Python server serves this page.
+
+   That means the browser automatically connects to:
+
+       /ws/run
+*/
+const RUNNER_WS_URL = "";
 
 
 /* ======================================================
-   ESP32 VARIABLES
+   CODE EDITOR
 ====================================================== */
 
-let port = null;
+const editor = CodeMirror.fromTextArea(
+    document.getElementById("editor"),
+    {
+        mode: "python",
+        theme: "material-darker",
 
-let writer = null;
+        lineNumbers: true,
+        lineWrapping: false,
+
+        indentUnit: 4,
+        tabSize: 4,
+        indentWithTabs: false,
+        smartIndent: true,
+
+        autoCloseBrackets: true,
+        matchBrackets: true,
+        styleActiveLine: true,
+
+        extraKeys: {
+
+            "Tab": function(cm) {
+
+                if (cm.somethingSelected()) {
+
+                    cm.indentSelection("add");
+
+                } else {
+
+                    cm.replaceSelection("    ", "end");
+
+                }
+            },
+
+            "Shift-Tab": function(cm) {
+
+                cm.indentSelection("subtract");
+
+            }
+        }
+    }
+);
 
 
-/* ======================================================
-   PYTHON VARIABLES
-====================================================== */
-
-let pyodide = null;
-
-let pyodideLoading = false;
-
-
-/* ======================================================
-   HTML ELEMENTS
-====================================================== */
-
-const editor =
-    document.getElementById(
-        "editor"
-    );
-
-
-const lineNumbers =
-    document.getElementById(
-        "lineNumbers"
-    );
-
-
-const terminalElement =
-    document.getElementById(
-        "terminal"
-    );
+editor.setValue(
+`print("Hello from ESP32 Python Studio!")
+`
+);
 
 
 /* ======================================================
    TERMINAL
 ====================================================== */
 
-const terminal =
-    new Terminal({
+const terminal = new Terminal({
 
-        convertEol: true,
+    cursorBlink: true,
 
-        cursorBlink: true,
+    convertEol: true,
 
-        scrollback: 5000,
+    scrollback: 5000,
 
-        fontFamily:
-            'Consolas, "Courier New", monospace',
+    fontFamily:
+        'Consolas, "Courier New", monospace',
 
-        fontSize: 14,
+    fontSize: 14,
 
-        theme: {
+    theme: {
 
-            background: "#090b0f",
+        background: "#090b0f",
 
-            foreground: "#d1d5db",
+        foreground: "#e6edf3",
 
-            cursor: "#e6edf3",
+        cursor: "#ffffff"
 
-            selectionBackground: "#334155"
-        }
-    });
+    }
+});
 
 
 terminal.open(
-    terminalElement
+    document.getElementById("terminal")
 );
 
 
-const status =
-    document.getElementById(
-        "status"
+terminal.write(
+    "ESP32 Python Studio terminal\r\n"
+);
+
+
+let runSocket = null;
+let running = false;
+
+
+function terminalWrite(text) {
+
+    terminal.write(
+        text.replace(/\r?\n/g, "\r\n")
     );
 
+}
 
-const connectButton =
-    document.getElementById(
-        "connectButton"
+
+function clearTerminal() {
+
+    terminal.write("\x1b[2J\x1b[H");
+
+}
+
+
+terminal.onData((data) => {
+
+    if (
+        runSocket &&
+        runSocket.readyState === WebSocket.OPEN
+    ) {
+
+        runSocket.send(
+            JSON.stringify({
+                type: "input",
+                data: data
+            })
+        );
+
+    }
+
+});
+
+
+function socketURL() {
+
+    if (RUNNER_WS_URL) {
+
+        return RUNNER_WS_URL;
+
+    }
+
+    const protocol =
+        location.protocol === "https:"
+            ? "wss:"
+            : "ws:";
+
+    return (
+        protocol +
+        "//" +
+        location.host +
+        "/ws/run"
     );
 
-
-const loadButton =
-    document.getElementById(
-        "loadButton"
-    );
+}
 
 
-const saveButton =
-    document.getElementById(
-        "saveButton"
-    );
+function sendResize() {
+
+    if (
+        runSocket &&
+        runSocket.readyState === WebSocket.OPEN
+    ) {
+
+        runSocket.send(
+
+            JSON.stringify({
+
+                type: "resize",
+
+                rows: terminal.rows,
+
+                cols: terminal.cols
+
+            })
+
+        );
+
+    }
+
+}
 
 
-const runButton =
-    document.getElementById(
-        "runButton"
-    );
+new ResizeObserver(() => {
 
+    sendResize();
 
-const stopButton =
-    document.getElementById(
-        "stopButton"
-    );
-
-
-const downloadButton =
-    document.getElementById(
-        "downloadButton"
-    );
-
-
-const clearButton =
-    document.getElementById(
-        "clearButton"
-    );
+}).observe(
+    document.getElementById("terminal")
+);
 
 
 /* ======================================================
    STATUS
 ====================================================== */
 
+const statusElement =
+    document.getElementById("status");
+
+
 function setStatus(
     message,
-    type = "normal"
+    type = ""
 ) {
 
-    status.textContent =
-        message;
+    statusElement.textContent = message;
 
-    status.className =
-        type;
+    statusElement.className = type;
+
 }
 
 
 /* ======================================================
-   LINE NUMBERS
+   ESP32 SERIAL
 ====================================================== */
 
-function updateLineNumbers() {
+let port = null;
+let writer = null;
 
-    const count =
-        editor.value.split(
-            "\n"
-        ).length;
-
-
-    let numbers = "";
-
-
-    for (
-        let i = 1;
-        i <= count;
-        i++
-    ) {
-
-        numbers +=
-            i + "\n";
-    }
-
-
-    lineNumbers.textContent =
-        numbers;
-}
-
-
-editor.addEventListener(
-    "input",
-    updateLineNumbers
-);
-
-
-/* ======================================================
-   TAB KEY
-====================================================== */
-
-editor.addEventListener(
-    "keydown",
-    function(event) {
-
-        if (
-            event.key ===
-            "Tab"
-        ) {
-
-            event.preventDefault();
-
-            const start =
-                editor.selectionStart;
-
-            const end =
-                editor.selectionEnd;
-
-            editor.value =
-                editor.value.substring(
-                    0,
-                    start
-                ) +
-                "    " +
-                editor.value.substring(
-                    end
-                );
-
-            editor.selectionStart =
-                start + 4;
-
-            editor.selectionEnd =
-                start + 4;
-
-            updateLineNumbers();
-        }
-    }
-);
-
-
-/* ======================================================
-   CONNECT ESP32
-====================================================== */
 
 async function connectESP32() {
 
     if (!("serial" in navigator)) {
 
         alert(
-            "Web Serial is not supported by this browser.\n\n" +
+            "Web Serial is not supported by this browser. " +
             "Use Google Chrome or Microsoft Edge."
         );
 
@@ -649,6 +503,20 @@ async function connectESP32() {
         }
 
 
+        if (port) {
+
+            try {
+
+                await port.close();
+
+            } catch (_) {}
+
+            port = null;
+            writer = null;
+
+        }
+
+
         port =
             await navigator.serial.requestPort();
 
@@ -662,8 +530,9 @@ async function connectESP32() {
             port.writable.getWriter();
 
 
-        connectButton.textContent =
-            "Connected";
+        document.getElementById(
+            "connectButton"
+        ).textContent = "Connected";
 
 
         setStatus(
@@ -671,50 +540,44 @@ async function connectESP32() {
             "connected"
         );
 
-
     } catch (error) {
 
-        console.error(
-            error
-        );
+        console.error(error);
 
         writer = null;
 
         port = null;
 
-        connectButton.textContent =
-            "Connect ESP32";
+        document.getElementById(
+            "connectButton"
+        ).textContent = "Connect ESP32";
 
 
         setStatus(
             "Connection failed",
             "error"
         );
+
     }
+
 }
 
 
-/* ======================================================
-   SERIAL HELPERS
-====================================================== */
-
-async function writeSerial(
-    data
-) {
+async function writeSerial(data) {
 
     if (!writer) {
 
         throw new Error(
             "ESP32 is not connected."
         );
+
     }
 
 
     await writer.write(
-        new TextEncoder().encode(
-            data
-        )
+        new TextEncoder().encode(data)
     );
+
 }
 
 
@@ -733,6 +596,7 @@ async function sendAndWaitFor(
         throw new Error(
             "ESP32 is not connected."
         );
+
     }
 
 
@@ -744,9 +608,7 @@ async function sendAndWaitFor(
         new TextDecoder();
 
 
-    let response =
-        "";
-
+    let response = "";
 
     let timer;
 
@@ -762,11 +624,10 @@ async function sendAndWaitFor(
                         await reader.read();
 
 
-                    if (
-                        result.done
-                    ) {
+                    if (result.done) {
 
                         break;
+
                     }
 
 
@@ -780,17 +641,18 @@ async function sendAndWaitFor(
 
 
                     if (
-                        response.includes(
-                            marker
-                        )
+                        response.includes(marker)
                     ) {
 
                         break;
+
                     }
+
                 }
 
 
                 return response;
+
             })();
 
 
@@ -798,20 +660,16 @@ async function sendAndWaitFor(
             new Promise(
                 (_, reject) => {
 
-                    timer =
-                        setTimeout(
-                            () => {
+                    timer = setTimeout(
+                        () => reject(
+                            new Error(
+                                "Timed out waiting for ESP32 response: " +
+                                marker
+                            )
+                        ),
+                        timeout
+                    );
 
-                                reject(
-                                    new Error(
-                                        "Timed out waiting for ESP32 response: " +
-                                        marker
-                                    )
-                                );
-
-                            },
-                            timeout
-                        );
                 }
             );
 
@@ -826,21 +684,16 @@ async function sendAndWaitFor(
             timeoutPromise
         ]);
 
-
     } finally {
 
-        clearTimeout(
-            timer
-        );
+        clearTimeout(timer);
 
         reader.releaseLock();
+
     }
+
 }
 
-
-/* ======================================================
-   SAVE TO ESP32
-====================================================== */
 
 async function saveToESP() {
 
@@ -860,55 +713,45 @@ async function saveToESP() {
     try {
 
         const code =
-            editor.value;
+            editor.getValue();
 
 
-        const responsePromise =
-            sendAndWaitFor(
+        const ready =
+            await sendAndWaitFor(
                 "SAVE",
                 "READY",
                 5000
             );
 
 
-        const readyResponse =
-            await responsePromise;
-
-
-        if (
-            !readyResponse.includes(
-                "READY"
-            )
-        ) {
+        if (!ready.includes("READY")) {
 
             throw new Error(
                 "ESP32 did not enter save mode."
             );
+
         }
 
 
-        const saveResponsePromise =
-            sendAndWaitFor(
+        const saved =
+            await sendAndWaitFor(
+
                 code +
                 "\n__END_OF_FILE__\n",
+
                 "SAVE_OK",
+
                 10000
+
             );
 
 
-        const saveResponse =
-            await saveResponsePromise;
-
-
-        if (
-            !saveResponse.includes(
-                "SAVE_OK"
-            )
-        ) {
+        if (!saved.includes("SAVE_OK")) {
 
             throw new Error(
                 "ESP32 did not confirm the file was saved."
             );
+
         }
 
 
@@ -917,26 +760,20 @@ async function saveToESP() {
             "connected"
         );
 
-
     } catch (error) {
 
-        console.error(
-            error
-        );
-
+        console.error(error);
 
         setStatus(
             "Save failed: " +
             error.message,
             "error"
         );
+
     }
+
 }
 
-
-/* ======================================================
-   LOAD FROM ESP32
-====================================================== */
 
 async function loadFromESP() {
 
@@ -984,6 +821,7 @@ async function loadFromESP() {
             throw new Error(
                 "No valid main.py response was received."
             );
+
         }
 
 
@@ -1002,11 +840,9 @@ async function loadFromESP() {
             );
 
 
-        editor.value =
-            code;
+        editor.setValue(code);
 
-
-        updateLineNumbers();
+        editor.focus();
 
 
         setStatus(
@@ -1014,305 +850,239 @@ async function loadFromESP() {
             "connected"
         );
 
-
     } catch (error) {
 
-        console.error(
-            error
-        );
-
+        console.error(error);
 
         setStatus(
             "Load failed: " +
             error.message,
             "error"
         );
+
     }
+
 }
 
 
 /* ======================================================
-   TERMINAL HELPERS
+   PYTHON RUNNER
 ====================================================== */
 
-function clearTerminal() {
+function setRunning(value) {
 
-    terminal.clear();
+    running = value;
 
-    terminal.reset();
+
+    document.getElementById(
+        "runButton"
+    ).disabled = value;
+
+
+    document.getElementById(
+        "stopButton"
+    ).style.display =
+        value
+            ? "inline-block"
+            : "none";
+
 }
 
 
-function writeTerminal(
-    text
-) {
+function runPython() {
 
-    terminal.write(
-        text
-    );
+    if (running) {
 
-    terminal.scrollToBottom();
-}
+        return;
 
-
-/* ======================================================
-   LOAD PYTHON
-====================================================== */
-
-async function startPython() {
-
-    if (pyodide) {
-
-        return true;
     }
-
-
-    if (pyodideLoading) {
-
-        return false;
-    }
-
-
-    pyodideLoading =
-        true;
 
 
     clearTerminal();
 
 
-    writeTerminal(
-        "Loading Python...\r\n"
+    terminal.write(
+        "Running...\r\n"
     );
+
+
+    setRunning(true);
 
 
     setStatus(
-        "Loading Python...",
-        "normal"
+        "Running Python...",
+        "connected"
     );
 
 
-    try {
-
-        pyodide =
-            await loadPyodide();
+    const url =
+        socketURL();
 
 
-        /*
-         * Send raw stdout directly
-         * into the terminal.
-         */
-        pyodide.setStdout({
-
-            raw: function(byte) {
-
-                terminal.write(
-                    String.fromCharCode(
-                        byte
-                    )
-                );
-            },
-
-            isatty: true,
-
-            getTerminalSize:
-                function() {
-
-                    return {
-
-                        columns:
-                            terminal.cols,
-
-                        rows:
-                            terminal.rows
-                    };
-                }
-        });
+    runSocket =
+        new WebSocket(url);
 
 
-        /*
-         * Send raw stderr directly
-         * into the terminal.
-         */
-        pyodide.setStderr({
+    runSocket.onopen = () => {
 
-            raw: function(byte) {
+        runSocket.send(
 
-                terminal.write(
-                    String.fromCharCode(
-                        byte
-                    )
-                );
-            },
+            JSON.stringify({
 
-            isatty: true,
+                type: "run",
 
-            getTerminalSize:
-                function() {
+                code: editor.getValue()
 
-                    return {
+            })
 
-                        columns:
-                            terminal.cols,
-
-                        rows:
-                            terminal.rows
-                    };
-                }
-        });
-
-
-        terminal.writeln(
-            "Python ready!"
         );
 
 
-        pyodideLoading =
-            false;
+        sendResize();
+
+
+        terminal.focus();
+
+    };
+
+
+    runSocket.onmessage = (event) => {
+
+        try {
+
+            const message =
+                JSON.parse(event.data);
+
+
+            if (
+                message.type === "output"
+            ) {
+
+                /*
+                   xterm receives the real terminal
+                   data, including ANSI escape codes.
+                */
+                terminal.write(
+                    message.data
+                );
+
+            }
+
+
+            else if (
+                message.type === "error"
+            ) {
+
+                terminalWrite(
+                    "\r\n" +
+                    message.message +
+                    "\r\n"
+                );
+
+            }
+
+
+            else if (
+                message.type === "exit"
+            ) {
+
+                terminalWrite(
+                    "\r\n[process exited with code " +
+                    message.code +
+                    "]\r\n"
+                );
+
+
+                setRunning(false);
+
+
+                setStatus(
+                    "Python finished",
+                    "connected"
+                );
+
+
+                runSocket.close();
+
+                runSocket = null;
+
+            }
+
+        } catch (error) {
+
+            console.error(error);
+
+        }
+
+    };
+
+
+    runSocket.onerror = () => {
+
+        terminalWrite(
+            "\r\n[Could not connect to Python runner]\r\n"
+        );
+
+
+        setRunning(false);
 
 
         setStatus(
-            "Python ready",
-            "connected"
-        );
-
-
-        return true;
-
-
-    } catch (error) {
-
-        clearTerminal();
-
-
-        terminal.writeln(
-            "Could not load Python:"
-        );
-
-
-        terminal.writeln(
-            ""
-        );
-
-
-        writeTerminal(
-            String(error) +
-            "\r\n"
-        );
-
-
-        setStatus(
-            "Python failed to load",
+            "Python runner connection failed",
             "error"
         );
 
-
-        pyodideLoading =
-            false;
+    };
 
 
-        return false;
-    }
-}
+    runSocket.onclose = () => {
 
+        if (running) {
 
-/* ======================================================
-   RUN PYTHON
-====================================================== */
+            setRunning(false);
 
-async function runPython() {
+            setStatus(
+                "Python runner disconnected",
+                "error"
+            );
 
-    const code =
-        editor.value;
-
-
-    if (!code.trim()) {
-
-        clearTerminal();
-
-
-        terminal.writeln(
-            "Nothing to run."
-        );
-
-
-        return;
-    }
-
-
-    clearTerminal();
-
-
-    setStatus(
-        "Starting Python...",
-        "normal"
-    );
-
-
-    const ready =
-        await startPython();
-
-
-    if (!ready) {
-
-        return;
-    }
-
-
-    try {
-
-        /*
-         * Automatically load compatible
-         * Pyodide packages referenced by
-         * imports.
-         */
-        if (
-            typeof
-            pyodide.loadPackagesFromImports
-            === "function"
-        ) {
-
-            await
-                pyodide.loadPackagesFromImports(
-                    code
-                );
         }
 
 
-        await
-            pyodide.runPythonAsync(
-                code
-            );
+        runSocket = null;
+
+    };
+
+}
 
 
-        setStatus(
-            "Python finished",
-            "connected"
+function stopPython() {
+
+    if (
+        runSocket &&
+        runSocket.readyState === WebSocket.OPEN
+    ) {
+
+        runSocket.send(
+
+            JSON.stringify({
+                type: "stop"
+            })
+
         );
 
 
-    } catch (error) {
-
-        terminal.writeln(
-            ""
+        terminalWrite(
+            "\r\n[stopping...]\r\n"
         );
 
-
-        writeTerminal(
-            error.toString() +
-            "\r\n"
-        );
-
-
-        setStatus(
-            "Python error",
-            "error"
-        );
     }
+
 }
 
 
 /* ======================================================
-   DOWNLOAD MAIN.PY
+   DOWNLOAD / CLEAR
 ====================================================== */
 
 function downloadPython() {
@@ -1320,86 +1090,40 @@ function downloadPython() {
     const blob =
         new Blob(
             [
-                editor.value
+                editor.getValue()
             ],
             {
-                type:
-                    "text/plain"
+                type: "text/x-python"
             }
         );
 
 
     const url =
-        URL.createObjectURL(
-            blob
-        );
+        URL.createObjectURL(blob);
 
 
-    const link =
-        document.createElement(
-            "a"
-        );
+    const a =
+        document.createElement("a");
 
 
-    link.href =
-        url;
+    a.href = url;
+
+    a.download = "main.py";
+
+    a.click();
 
 
-    link.download =
-        "main.py";
+    URL.revokeObjectURL(url);
 
-
-    document.body.appendChild(
-        link
-    );
-
-
-    link.click();
-
-
-    link.remove();
-
-
-    URL.revokeObjectURL(
-        url
-    );
-
-
-    setStatus(
-        "Downloaded main.py"
-    );
 }
 
 
-/* ======================================================
-   CLEAR
-====================================================== */
-
 function clearEditor() {
 
-    if (
-        !confirm(
-            "Clear the editor?"
-        )
-    ) {
+    editor.setValue("");
 
-        return;
-    }
+    editor.focus();
 
-
-    editor.value =
-        "";
-
-
-    clearTerminal();
-
-
-    updateLineNumbers();
-
-
-    setStatus(
-        "Editor cleared"
-    );
 }
 
 
@@ -1407,38 +1131,66 @@ function clearEditor() {
    BUTTONS
 ====================================================== */
 
-connectButton.onclick =
-    connectESP32;
+document.getElementById(
+    "connectButton"
+).onclick = connectESP32;
 
 
-loadButton.onclick =
-    loadFromESP;
+document.getElementById(
+    "loadButton"
+).onclick = loadFromESP;
 
 
-saveButton.onclick =
-    saveToESP;
+document.getElementById(
+    "saveButton"
+).onclick = saveToESP;
 
 
-runButton.onclick =
-    runPython;
+document.getElementById(
+    "runButton"
+).onclick = runPython;
 
 
-downloadButton.onclick =
-    downloadPython;
+document.getElementById(
+    "stopButton"
+).onclick = stopPython;
 
 
-clearButton.onclick =
-    clearEditor;
+document.getElementById(
+    "downloadButton"
+).onclick = downloadPython;
 
 
-/* ======================================================
-   START
-====================================================== */
+document.getElementById(
+    "clearButton"
+).onclick = clearEditor;
 
-updateLineNumbers();
+
+window.addEventListener(
+    "beforeunload",
+    () => {
+
+        if (
+            runSocket &&
+            runSocket.readyState === WebSocket.OPEN
+        ) {
+
+            try {
+
+                runSocket.send(
+                    JSON.stringify({
+                        type: "stop"
+                    })
+                );
+
+            } catch (_) {}
+
+        }
+
+    }
+);
 
 </script>
 
 </body>
-
 </html>
