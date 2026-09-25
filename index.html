@@ -12,6 +12,16 @@
 <!-- Python running inside the browser -->
 <script src="https://cdn.jsdelivr.net/pyodide/v0.29.3/full/pyodide.js"></script>
 
+<!-- Terminal emulator -->
+<link
+    rel="stylesheet"
+    href="https://cdnjs.cloudflare.com/ajax/libs/xterm/6.0.0/xterm.css"
+>
+
+<script
+    src="https://cdnjs.cloudflare.com/ajax/libs/xterm/6.0.0/xterm.js">
+</script>
+
 <style>
 
 * {
@@ -22,8 +32,10 @@ body {
     margin: 0;
     height: 100vh;
     overflow: hidden;
+
     background: #0f1117;
     color: white;
+
     font-family: Arial, sans-serif;
 }
 
@@ -180,7 +192,7 @@ button:hover {
 
 
 /* ================================
-   OUTPUT
+   OUTPUT TERMINAL
 ================================ */
 
 .output-container {
@@ -213,29 +225,22 @@ button:hover {
     border-bottom: 1px solid #303541;
 }
 
-#output {
+#terminal {
     flex: 1;
 
-    margin: 0;
+    min-height: 0;
 
-    padding: 12px 15px;
+    padding: 8px 10px;
 
-    overflow: auto;
-
-    white-space: pre-wrap;
-
-    font-family:
-        Consolas,
-        "Courier New",
-        monospace;
-
-    font-size: 14px;
-
-    color: #d1d5db;
+    overflow: hidden;
 }
 
-.error-output {
-    color: #f87171 !important;
+#terminal .xterm {
+    height: 100%;
+}
+
+#terminal .xterm-viewport {
+    overflow-y: auto !important;
 }
 
 
@@ -360,7 +365,10 @@ OUTPUT
 </div>
 
 
-<pre id="output"></pre>
+<div
+    id="terminal"
+    aria-label="Python terminal">
+</div>
 
 
 </div>
@@ -377,8 +385,7 @@ OUTPUT
 
 <span
 id="status"
-class="normal"
->
+class="normal">
 Not connected
 </span>
 
@@ -422,10 +429,46 @@ const lineNumbers =
     );
 
 
-const output =
+const terminalElement =
     document.getElementById(
-        "output"
+        "terminal"
     );
+
+
+/* ======================================================
+   TERMINAL
+====================================================== */
+
+const terminal =
+    new Terminal({
+
+        convertEol: true,
+
+        cursorBlink: true,
+
+        scrollback: 5000,
+
+        fontFamily:
+            'Consolas, "Courier New", monospace',
+
+        fontSize: 14,
+
+        theme: {
+
+            background: "#090b0f",
+
+            foreground: "#d1d5db",
+
+            cursor: "#e6edf3",
+
+            selectionBackground: "#334155"
+        }
+    });
+
+
+terminal.open(
+    terminalElement
+);
 
 
 const status =
@@ -545,35 +588,27 @@ editor.addEventListener(
 
             event.preventDefault();
 
-
             const start =
                 editor.selectionStart;
 
-
             const end =
                 editor.selectionEnd;
-
 
             editor.value =
                 editor.value.substring(
                     0,
                     start
-                )
-                +
-                "    "
-                +
+                ) +
+                "    " +
                 editor.value.substring(
                     end
                 );
 
-
             editor.selectionStart =
                 start + 4;
 
-
             editor.selectionEnd =
                 start + 4;
-
 
             updateLineNumbers();
         }
@@ -587,9 +622,7 @@ editor.addEventListener(
 
 async function connectESP32() {
 
-    if (
-        !("serial" in navigator)
-    ) {
+    if (!("serial" in navigator)) {
 
         alert(
             "Web Serial is not supported by this browser.\n\n" +
@@ -601,6 +634,20 @@ async function connectESP32() {
 
 
     try {
+
+        if (
+            port &&
+            port.readable
+        ) {
+
+            setStatus(
+                "ESP32 already connected",
+                "connected"
+            );
+
+            return;
+        }
+
 
         port =
             await navigator.serial.requestPort();
@@ -627,7 +674,16 @@ async function connectESP32() {
 
     } catch (error) {
 
-        console.error(error);
+        console.error(
+            error
+        );
+
+        writer = null;
+
+        port = null;
+
+        connectButton.textContent =
+            "Connect ESP32";
 
 
         setStatus(
@@ -639,33 +695,146 @@ async function connectESP32() {
 
 
 /* ======================================================
-   SEND ESP32 COMMAND
+   SERIAL HELPERS
 ====================================================== */
 
-async function sendCommand(
-    command
+async function writeSerial(
+    data
 ) {
 
     if (!writer) {
 
-        alert(
-            "Connect the ESP32 first."
+        throw new Error(
+            "ESP32 is not connected."
         );
-
-        return false;
     }
 
 
     await writer.write(
-
         new TextEncoder().encode(
-            command + "\n"
+            data
         )
-
     );
+}
 
 
-    return true;
+async function sendAndWaitFor(
+    command,
+    marker,
+    timeout = 5000
+) {
+
+    if (
+        !port ||
+        !writer ||
+        !port.readable
+    ) {
+
+        throw new Error(
+            "ESP32 is not connected."
+        );
+    }
+
+
+    const reader =
+        port.readable.getReader();
+
+
+    const decoder =
+        new TextDecoder();
+
+
+    let response =
+        "";
+
+
+    let timer;
+
+
+    try {
+
+        const readPromise =
+            (async () => {
+
+                while (true) {
+
+                    const result =
+                        await reader.read();
+
+
+                    if (
+                        result.done
+                    ) {
+
+                        break;
+                    }
+
+
+                    response +=
+                        decoder.decode(
+                            result.value,
+                            {
+                                stream: true
+                            }
+                        );
+
+
+                    if (
+                        response.includes(
+                            marker
+                        )
+                    ) {
+
+                        break;
+                    }
+                }
+
+
+                return response;
+            })();
+
+
+        const timeoutPromise =
+            new Promise(
+                (_, reject) => {
+
+                    timer =
+                        setTimeout(
+                            () => {
+
+                                reject(
+                                    new Error(
+                                        "Timed out waiting for ESP32 response: " +
+                                        marker
+                                    )
+                                );
+
+                            },
+                            timeout
+                        );
+                }
+            );
+
+
+        await writeSerial(
+            command + "\n"
+        );
+
+
+        return await Promise.race([
+            readPromise,
+            timeoutPromise
+        ]);
+
+
+    } finally {
+
+        clearTimeout(
+            timer
+        );
+
+        reader.releaseLock();
+    }
 }
 
 
@@ -675,7 +844,10 @@ async function sendCommand(
 
 async function saveToESP() {
 
-    if (!writer) {
+    if (
+        !writer ||
+        !port
+    ) {
 
         alert(
             "Connect the ESP32 first."
@@ -687,51 +859,57 @@ async function saveToESP() {
 
     try {
 
-        /*
-         * Tell ESP32 we are saving.
-         */
-
-        await sendCommand(
-            "SAVE"
-        );
-
-
-        /*
-         * Wait for ESP32 to enter
-         * save mode.
-         */
-
-        await new Promise(
-            resolve =>
-                setTimeout(
-                    resolve,
-                    100
-                )
-        );
-
-
         const code =
             editor.value;
 
 
-        /*
-         * IMPORTANT:
-         *
-         * This matches main.cpp.
-         */
-
-        const data =
-            code +
-            "\n__END_OF_FILE__\n";
+        const responsePromise =
+            sendAndWaitFor(
+                "SAVE",
+                "READY",
+                5000
+            );
 
 
-        await writer.write(
+        const readyResponse =
+            await responsePromise;
 
-            new TextEncoder().encode(
-                data
+
+        if (
+            !readyResponse.includes(
+                "READY"
             )
+        ) {
 
-        );
+            throw new Error(
+                "ESP32 did not enter save mode."
+            );
+        }
+
+
+        const saveResponsePromise =
+            sendAndWaitFor(
+                code +
+                "\n__END_OF_FILE__\n",
+                "SAVE_OK",
+                10000
+            );
+
+
+        const saveResponse =
+            await saveResponsePromise;
+
+
+        if (
+            !saveResponse.includes(
+                "SAVE_OK"
+            )
+        ) {
+
+            throw new Error(
+                "ESP32 did not confirm the file was saved."
+            );
+        }
 
 
         setStatus(
@@ -742,11 +920,14 @@ async function saveToESP() {
 
     } catch (error) {
 
-        console.error(error);
+        console.error(
+            error
+        );
 
 
         setStatus(
-            "Save failed",
+            "Save failed: " +
+            error.message,
             "error"
         );
     }
@@ -759,7 +940,10 @@ async function saveToESP() {
 
 async function loadFromESP() {
 
-    if (!port) {
+    if (
+        !writer ||
+        !port
+    ) {
 
         alert(
             "Connect the ESP32 first."
@@ -771,50 +955,12 @@ async function loadFromESP() {
 
     try {
 
-        await sendCommand(
-            "GET"
-        );
-
-
-        const reader =
-            port.readable.getReader();
-
-
-        let response = "";
-
-
-        while (true) {
-
-            const result =
-                await reader.read();
-
-
-            if (
-                result.done
-            ) {
-
-                break;
-            }
-
-
-            response +=
-                new TextDecoder().decode(
-                    result.value
-                );
-
-
-            if (
-                response.includes(
-                    "PYTHON_END"
-                )
-            ) {
-
-                break;
-            }
-        }
-
-
-        reader.releaseLock();
+        const response =
+            await sendAndWaitFor(
+                "GET",
+                "PYTHON_END",
+                10000
+            );
 
 
         const start =
@@ -831,14 +977,13 @@ async function loadFromESP() {
 
         if (
             start === -1 ||
-            end === -1
+            end === -1 ||
+            end < start
         ) {
 
-            alert(
-                "No main.py has been saved yet."
+            throw new Error(
+                "No valid main.py response was received."
             );
-
-            return;
         }
 
 
@@ -872,14 +1017,41 @@ async function loadFromESP() {
 
     } catch (error) {
 
-        console.error(error);
+        console.error(
+            error
+        );
 
 
         setStatus(
-            "Load failed",
+            "Load failed: " +
+            error.message,
             "error"
         );
     }
+}
+
+
+/* ======================================================
+   TERMINAL HELPERS
+====================================================== */
+
+function clearTerminal() {
+
+    terminal.clear();
+
+    terminal.reset();
+}
+
+
+function writeTerminal(
+    text
+) {
+
+    terminal.write(
+        text
+    );
+
+    terminal.scrollToBottom();
 }
 
 
@@ -905,8 +1077,12 @@ async function startPython() {
         true;
 
 
-    output.textContent =
-        "Loading Python...\n";
+    clearTerminal();
+
+
+    writeTerminal(
+        "Loading Python...\r\n"
+    );
 
 
     setStatus(
@@ -922,50 +1098,76 @@ async function startPython() {
 
 
         /*
-         * Normal print() output.
+         * Send raw stdout directly
+         * into the terminal.
          */
-
         pyodide.setStdout({
 
-            batched: function(text) {
+            raw: function(byte) {
 
-                output.textContent +=
-                    text + "\n";
+                terminal.write(
+                    String.fromCharCode(
+                        byte
+                    )
+                );
+            },
 
+            isatty: true,
 
-                output.scrollTop =
-                    output.scrollHeight;
-            }
+            getTerminalSize:
+                function() {
 
+                    return {
+
+                        columns:
+                            terminal.cols,
+
+                        rows:
+                            terminal.rows
+                    };
+                }
         });
 
 
         /*
-         * Error output.
+         * Send raw stderr directly
+         * into the terminal.
          */
-
         pyodide.setStderr({
 
-            batched: function(text) {
+            raw: function(byte) {
 
-                output.textContent +=
-                    text + "\n";
-
-
-                output.classList.add(
-                    "error-output"
+                terminal.write(
+                    String.fromCharCode(
+                        byte
+                    )
                 );
+            },
 
+            isatty: true,
 
-                output.scrollTop =
-                    output.scrollHeight;
-            }
+            getTerminalSize:
+                function() {
 
+                    return {
+
+                        columns:
+                            terminal.cols,
+
+                        rows:
+                            terminal.rows
+                    };
+                }
         });
 
 
-        output.textContent =
-            "Python ready!\n";
+        terminal.writeln(
+            "Python ready!"
+        );
+
+
+        pyodideLoading =
+            false;
 
 
         setStatus(
@@ -974,22 +1176,27 @@ async function startPython() {
         );
 
 
-        pyodideLoading =
-            false;
-
-
         return true;
 
 
     } catch (error) {
 
-        output.textContent =
-            "Could not load Python:\n\n" +
-            error;
+        clearTerminal();
 
 
-        output.classList.add(
-            "error-output"
+        terminal.writeln(
+            "Could not load Python:"
+        );
+
+
+        terminal.writeln(
+            ""
+        );
+
+
+        writeTerminal(
+            String(error) +
+            "\r\n"
         );
 
 
@@ -1020,20 +1227,19 @@ async function runPython() {
 
     if (!code.trim()) {
 
-        output.textContent =
-            "Nothing to run.";
+        clearTerminal();
+
+
+        terminal.writeln(
+            "Nothing to run."
+        );
+
 
         return;
     }
 
 
-    output.textContent =
-        "";
-
-
-    output.classList.remove(
-        "error-output"
-    );
+    clearTerminal();
 
 
     setStatus(
@@ -1054,9 +1260,28 @@ async function runPython() {
 
     try {
 
-        await pyodide.runPythonAsync(
-            code
-        );
+        /*
+         * Automatically load compatible
+         * Pyodide packages referenced by
+         * imports.
+         */
+        if (
+            typeof
+            pyodide.loadPackagesFromImports
+            === "function"
+        ) {
+
+            await
+                pyodide.loadPackagesFromImports(
+                    code
+                );
+        }
+
+
+        await
+            pyodide.runPythonAsync(
+                code
+            );
 
 
         setStatus(
@@ -1067,13 +1292,14 @@ async function runPython() {
 
     } catch (error) {
 
-        output.textContent +=
-            "\n" +
-            error.toString();
+        terminal.writeln(
+            ""
+        );
 
 
-        output.classList.add(
-            "error-output"
+        writeTerminal(
+            error.toString() +
+            "\r\n"
         );
 
 
@@ -1093,7 +1319,9 @@ function downloadPython() {
 
     const blob =
         new Blob(
-            [editor.value],
+            [
+                editor.value
+            ],
             {
                 type:
                     "text/plain"
@@ -1163,8 +1391,7 @@ function clearEditor() {
         "";
 
 
-    output.textContent =
-        "";
+    clearTerminal();
 
 
     updateLineNumbers();
